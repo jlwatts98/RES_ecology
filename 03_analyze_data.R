@@ -1,9 +1,13 @@
 ##### Data Analysis #####
 
-# source header
+
+### This script is the analysis associated with the INSERT JOURNAL TITLE
+### DOI: INSERT DOI.
+
+# source header to load packages and source functions
 source("header.R")
 
-# load in data
+# load in data produced by 01_process_data.R script
 all_complete_traits = readr::read_csv("objects/all_complete_traits.csv")
 
 comm_gard = readr::read_csv("objects/cleaned.csv")
@@ -14,6 +18,7 @@ traits_bysp = readr::read_csv("objects/traits_bysp.csv") %>%
 ##### Figure 1: Common Garden RES Data #####
 
 ### figure 1A: PCA of common garden data
+# omit missing values
 comm_gard = comm_gard %>%
   na.omit()
 comm_gard_pca = prcomp(comm_gard[, c(5:8, 13)], center = T, scale = T)
@@ -29,7 +34,7 @@ PCAloadings$Angle = ((180/pi) * atan(PCAloadings$PC2/PCAloadings$PC1))
 PCAloadings$Offset <- c(2.1, -.5, 1.4, 1.75, -.75)
 
 # Plot
-comm_gard_biplot = ggplot(PCAvalues, aes(x = PC1, y = PC2)) +
+fig1a = ggplot(PCAvalues, aes(x = PC1, y = PC2)) +
   geom_point(size = 2, color = "pink", alpha = 1) +
   geom_segment(data = PCAloadings, aes(x = 0, y = 0, xend = (1.5 * PC1), yend = (1.5 * PC2)),
                arrow = arrow(length = unit(1/2, "picas")), color = "black", size = 1) +
@@ -38,35 +43,42 @@ comm_gard_biplot = ggplot(PCAvalues, aes(x = PC1, y = PC2)) +
               PCAloadings$Offset) +
   theme_bw() + coord_equal() +
   xlab("PC 1 (39.5% expl.)") +
-  ylab("PC 2 (25.0% expl.)") +
+  ylab("PC 2 (25.0%)") +
   theme(axis.title = element_text(size = 15))
-comm_gard_biplot
+fig1a
 
 
 ## figure 1B: D and %M
-comm_gard_dm = ggplot(comm_gard, mapping = aes(x = D, y = `%M`)) +
+fig1b = ggplot(comm_gard, mapping = aes(x = D, y = `%M`)) +
   geom_point() +
   geom_smooth(method = "lm") +
   theme_bw() +
   labs(x = "D (mm)", y = "%M (%)") +
   theme(axis.title = element_text(size = 15))
-comm_gard_dm
+fig1b
 
 ## figure 1C: RTD and %N
-comm_gard_rtdn = ggplot(comm_gard, mapping = aes(x = RTD, y = `%N`)) +
+fig1c = ggplot(comm_gard, mapping = aes(x = RTD, y = `%N`)) +
   geom_point() +
   geom_smooth(method = "lm") +
   theme_bw() +
   labs(x = expression(paste("RTD (g/", cm^3, ")")), y = "%N (%)") +
   theme(axis.title = element_text(size = 15))
-comm_gard_rtdn
+fig1c
 
 
-fig1 = ggarrange(comm_gard_biplot, comm_gard_dm, comm_gard_rtdn,
+# linear models
+d_m_lm = lm(D ~ `%M`, data = comm_gard)
+summary(d_m_lm)
+rtd_n_lm = lm(RTD ~ `%N`, data = comm_gard)
+summary(d_m_lm)
+
+fig1 = ggarrange(fig1a, fig1b, fig1c,
                  nrow = 1,
                  labels = c("A", "B", "C"))
 fig1
 
+# save the plot
 ggsave(filename = "objects/fig1.jpg",
        plot = fig1, 
        width = 7, 
@@ -76,8 +88,10 @@ ggsave(filename = "objects/fig1.jpg",
 
 ##### Supplementary Figure 1: d_15N compared to PCs #####
 
+# bind pc values to dataframe
 comm_gard_PC = cbind(comm_gard, PCAvalues)
 
+# delta 15N vs PC1
 comm_gard_d_15N_pc1 = ggplot(comm_gard_PC, mapping = aes(x = PC1, y = d_15N)) +
   geom_point() +
   geom_smooth(method = "lm") +
@@ -86,6 +100,7 @@ comm_gard_d_15N_pc1 = ggplot(comm_gard_PC, mapping = aes(x = PC1, y = d_15N)) +
   theme(axis.title = element_text(size = 15))
 comm_gard_d_15N_pc1
 
+# delta 15N vs. PC2
 comm_gard_d_15N_pc2 = ggplot(comm_gard_PC, mapping = aes(x = PC2, y = d_15N)) +
   geom_point() +
   geom_smooth(method = "lm") +
@@ -97,7 +112,14 @@ comm_gard_d_15N_pc2
 supp_fig1 = ggarrange(comm_gard_d_15N_pc1, comm_gard_d_15N_pc2, labels = c("A", "B"))
 supp_fig1
 
+# linear models
+d_15n_pc1_lm = lm(PC1 ~ d_15N, data = comm_gard_PC)
+summary(d_15n_pc1_lm)
 
+d_15n_pc2_lm = lm(PC2 ~ d_15N, data = comm_gard_PC)
+summary(d_15n_pc2_lm)
+
+# save the plot
 ggsave(filename = "objects/supp_fig1.jpg",
        plot = supp_fig1, 
        width = 7, 
@@ -113,12 +135,13 @@ supp_table1 = comm_gard |>
   group_by(species) |>
   tally()
 
+# write to a csv file
 write.csv(supp_table1, "objects/supp_table1.csv")
 
 
 ##### Figure 2: GrooT + Common Garden Root Economic Spectrum #####
 
-### panel figure: RES
+### panel figure: Root Economic Spectrum
 
 ## figure 2A: PCA
 all_complete_pca = prcomp(all_complete_traits[, c(4:8)], center = T, scale = T)
@@ -133,6 +156,7 @@ PCAloadings <- data.frame(Variables = rownames(all_complete_pca$rotation), all_c
 PCAloadings$Angle = ((180/pi) * atan(PCAloadings$PC2/PCAloadings$PC1))
 PCAloadings$Offset <- c(2.4, 1.5, 1.4, -.5, 1.5)
 
+# plot
 fig2 = ggplot(PCAvalues, aes(x = PC1, y = PC2)) +
   geom_point(size = 2, color = "pink", alpha = 1) +
   geom_segment(data = PCAloadings, aes(x = 0, y = 0, xend = (1.5 * PC1), yend = (1.5 * PC2)),
@@ -168,6 +192,7 @@ fig2
 
 #fig2
 
+# save the plot
 ggsave(filename = "objects/fig2.jpg",
        plot = fig2, 
        width = 4, 
@@ -175,22 +200,27 @@ ggsave(filename = "objects/fig2.jpg",
        units = "in", 
        dpi = 600)
 
-##### Supplementary Table 2: PCA loadings #####
-loadings = all_complete_pca$rotation
+##### Table 1: PCA loadings #####
 
-supp_table2 <- prop.table(loadings, margin = 1)
+# round the loading values to 3 digits
+table1 = as.data.frame(all_complete_pca$rotation) |>
+  mutate_if(is.numeric, round, digits=3) |>
+  as.matrix()
+
 
 # Write this table to a comma separated .txt file:    
-write.table(supp_table2, 
-            file = "objects/supp_table2.txt", 
+write.table(table1, 
+            file = "objects/table1.txt", 
             sep = ",", quote = FALSE, row.names = T)
 
 
 ##### Supplementary Figure 2 Correlation Matrix #####
 
+# libraries
 library(corrplot)
 library(psych)
 
+# correlation matrix
 jpeg("objects/supp_fig2.jpeg", quality = 100, width = 7.5,
      height = 5, units = "in", res = 600)
 pairs.panels(all_complete_traits[,c(8, 4, 7, 6, 5)], 
@@ -331,6 +361,7 @@ dev.off()
 #       units = "in", dpi = 600)
 
 ##### Figure 3: Phylogenetic Signal across groups #####
+
 # load in phylogeny
 comm_gard_phylo = readr::read_rds("objects/comm_gard_phylo.rds")
 RES_phylo = readr::read_rds("objects/RES_phylo.rds")
@@ -346,9 +377,11 @@ all_complete_traits$group1 = as.factor(all_complete_traits$group1)
 all_complete_traits = as.data.frame(all_complete_traits)
 str(all_complete_traits)
 
+# run moran's I correlogram across genus, family, and group
 group_correlogram = correlogram.formula(PC1 + PC2 ~ group1/family/genus,
                                         data = all_complete_traits)
 
+# assemble data frame for plotting
 corr = rbind(group_correlogram$PC1, 
              group_correlogram$PC2)
 
@@ -357,7 +390,7 @@ corr$trait = c(rep("PC1", 3),
 corr$labels = ifelse(corr$labels == "group1", "group", corr$labels)
 corr$labels1 = c(1,2,3,1,2,3)
 
-
+# plot
 fig3 = corr |> 
   ggplot(aes(x = labels1, y = obs, group = trait)) +
   geom_point(stat = "identity", size = 4) + 
@@ -384,6 +417,7 @@ fig3 = corr |>
   )
 fig3
 
+# save
 ggsave("objects/fig3.jpg", plot = fig3,
        dpi = 600, width = 5, height = 3, units = "in")
 
@@ -393,10 +427,12 @@ ggsave("objects/fig3.jpg", plot = fig3,
 ### fig 4a: PCA with groups
 library(ggbiplot)
 
+# assign new scale_color_discrete function
 scale_color_discrete <- function(...) {
   scale_color_manual(..., values = viridis::viridis(6))
 }
 
+# plot pca
 fig4a = ggbiplot(all_complete_pca, 
                               groups = all_complete_traits$group1, 
                               ellipse = T,
@@ -413,22 +449,31 @@ fig4a = ggbiplot(all_complete_pca,
         axis.title = element_text(size = 15))
 fig4a
 
+# save
+ggsave(filename = "objects/fig4a.jpg", plot = fig4a,
+       width = 5, height = 4, dpi = 600,
+       units = "in")
+
+
 
 ### fig 4b: PC1 + PC2 phylogeny colored by local signal
+
+# library phylogenetic packages
 library(ape)
 library(phytools)
 library(phylosignal)
 library(phylobase)
 
+# modify all_complete_traits dataset to match phylogeny tip names
 all_complete_traits$species = gsub(" ", "_", all_complete_traits$species)
 rownames(all_complete_traits) = all_complete_traits$species
 all_complete_traits$species = as.factor(all_complete_traits$species)
 
-
 # make a phylo4d object
 p4d_pc = phylo4d(RES_phylo, all_complete_traits[, c(9:10)])
 
-# locating signal
+# locating signal (Moran's I test for local phylogenetic signal)
+# p-values computed via iteration
 set.seed(1)
 PC.lipa <- lipaMoran(p4d_pc)
 
@@ -447,6 +492,7 @@ dev.off()
 
 ### fig 4c: individual traits phylogeny colored by local signal
 
+# make sure the RES_phylo object is a binary phylogenetic tree
 is.binary(RES_phylo)
 RES_binary = multi2di(RES_phylo)
 
@@ -455,6 +501,8 @@ p4d = phylo4d(RES_phylo, all_complete_traits[, c(4:8)])
 
 # locating signal
 RES.lipa <- lipaMoran(p4d)
+
+# plot
 jpeg("objects/fig4c.jpg", quality = 100, width = 8.5,
      height = 5, units = "in", res = 600)
 barplot.phylo4d(p4d, bar.col=(RES.lipa$p.value < 0.05) + 1, center = T , scale = T,
@@ -471,7 +519,7 @@ barplot.phylo4d(p4d, bar.col=(RES.lipa$p.value < 0.05) + 1, center = T , scale =
 
 dev.off()
 
-##### Supplementary Table 3: Phylogenetic Signal #####
+##### Supplementary Table 2: Phylogenetic Signal #####
 
 # measure phylogenetic signal of individual traits
 traits_signal = phyloSignal(p4d = p4d, method = "all")
@@ -482,18 +530,24 @@ pc_signal = phyloSignal(p4d = p4d_pc, method = "all")
 pc_signal
 
 # make into a table
-# Perform pairwise comparisons and adjust p-values
-library(rstatix)
-test = ToothGrowth %>%
-  t_test(len ~ dose) %>%
-  adjust_pvalue() %>%
-  add_significance("p.adj")
-test
+traits_stat = traits_signal$stat
+pc_stat = pc_signal$stat
 
-##### Supplementary Table 4: Chi Squared Test of Independence on Local Phylogenetic signal #####
+supp_table2 = as.data.frame(t(rbind(pc_stat, traits_stat))) |>
+  mutate_if(is.numeric, round, digits=2) |>
+  as.matrix()
 
+# save
+write.table(supp_table2, 
+            file = "objects/supp_table2.txt", 
+            sep = ",", quote = FALSE, row.names = T)
+
+##### Supplementary Table 3: Chi Squared Test of Independence on Local Phylogenetic signal #####
+
+# extract p-values from local signal test
 p_values = as.data.frame(PC.lipa$p.value)
 
+# change to binary based on p-value 0.05
 p_values$local_signal_PC1 = ifelse(p_values$PC1 < 0.05, 
                                    "signficant",
                                    "not significant")
@@ -501,13 +555,23 @@ p_values$local_signal_PC2 = ifelse(p_values$PC2 < 0.05,
                                    "signficant",
                                    "not significant")
 
-table(p_values$local_signal_PC1, p_values$local_signal_PC2)
+# make a table
+supp_table3 = table(p_values$local_signal_PC1, p_values$local_signal_PC2)
 
+# do a chi-squared test with no correction (because four unique states)
 chisq.test(p_values$local_signal_PC1, p_values$local_signal_PC2, 
            correct=F)
 
+p_values |>
+  group_by(local_signal_PC1, local_signal_PC2) |>
+  tally()
 
+# write to a .txt file
+write.table(supp_table3, 
+            file = "objects/supp_table3.txt", 
+            sep = ",", quote = FALSE, row.names = T)
 ##### Figure 5: Divergence Time of Family vs. %M #####
+
 # libraries
 library(stringr)
 library(V.PhyloMaker)
@@ -520,9 +584,11 @@ tips_df = merge(tips_df, traits_bysp, by = "species") %>%
   select(species, genus, family)
 tips_df$species = sub(" ", "_", tips_df$species)
 
+# extract divergence time information at each family node
 comm_gard_nodes = build.nodes.2(RES_phylo, tips = tips_df) %>% 
   filter(level == "F")
 
+# merge
 comm_gard_family = merge(comm_gard, traits_bysp, by = "species")
 
 comm_gard_age = merge(comm_gard_family, comm_gard_nodes, by = "family")
@@ -530,6 +596,7 @@ comm_gard_age = merge(comm_gard_family, comm_gard_nodes, by = "family")
 # family groups
 fam_group = all_complete_traits[, c(1,2)]
 
+# summarise by species, calculate standard error
 diverge_comm_gard = comm_gard_age %>%
   dplyr::group_by(species, family) %>%
   dplyr::summarise(number = n(),
@@ -539,12 +606,14 @@ diverge_comm_gard = comm_gard_age %>%
   mutate_all(~replace(., is.na(.), 0)) %>%
   mutate(se = sd_M / sqrt(number))
 
+# merge to final dataset
 diverge_comm_gard = merge(diverge_comm_gard, fam_group, by = "family")
 
 scale_fill_discrete <- function(...) {
   scale_fill_manual(..., values = viridis::viridis(6))
 }
 
+# plot
 fig5a = ggplot(data = diverge_comm_gard, mapping = aes(
   x = fam_divergence, y = `%M`
 )) +
@@ -564,6 +633,8 @@ fig5a = ggplot(data = diverge_comm_gard, mapping = aes(
 fig5a
 
 ### Figure 5 B: Divergence Time vs. %M for all species
+
+# repeat for all species
 # node information
 
 tips_df = as.data.frame(RES_phylo$tip.label)
@@ -594,6 +665,7 @@ fig5 = fig5a + fig5b + plot_layout(nrow = 2, guides = 'collect')
 
 fig5
 
+# save
 ggsave("objects/fig5.jpg", plot = fig5,
        dpi = 600, width = 5, 
        height = 4, units = "in")
@@ -634,8 +706,11 @@ fig6a
 library(forcats)
 PCs = stack(CSR_RES[,c(13,14)])
 PCs$CSR = rep(CSR_RES$max, 2)
+
+# reorder factor to change way it appears on the plot
 PCs$CSR = fct_relevel(PCs$CSR, "C", "S", "R", "CSR")
 
+# perform analysis of variance and post-hoc tukey tests
 aov = aov(PC1 ~ max, data = CSR_RES)
 summary(aov)
 tukey = TukeyHSD(aov)
@@ -646,11 +721,12 @@ summary(aov)
 tukey = TukeyHSD(aov)
 tukey
 
-
+# create annotation dataframe based on tukey results
 x = c(.8, 1.2, 1.8, 2.2, 2.8, 3.2, 3.8, 4.2)
 y = rep(3.5, 8)
 label = c("a", "a", "b", "a", "b", "b", "ab", "ab")
 
+# plot
 fig6b = ggplot(data = PCs, aes(x = CSR, y = values,
                                 fill = ind)) +
   geom_boxplot(color = "black") + theme_bw() +
@@ -672,6 +748,7 @@ fig6b
 fig6 = ggarrange(fig6a, fig6b, nrow = 2, labels = c("A", "B"))
 fig6
 
+# save
 ggsave("objects/fig6.jpg", plot = fig6,
        dpi = 600, width = 7, height = 4.5, units = "in")
 
@@ -776,9 +853,78 @@ ColourTernary(map, spectrum = spectrum)
 
 dev.off()
 
-##### Supplementary Figure 4: Individual Traits and CSR Boxplots #####
+##### Supplementary Figure 4: Common Garden Individual Traits and CSR Boxplots#####
 
+# libraries
+library(forcats)
+library(ggplot2)
+# load in CSR data
 CSR = readr::read_csv("objects/CSR.csv")
+
+# add common garden species
+CSR_comm_gard = merge(traits_bysp, CSR, by = "species")
+
+# reduce for stacking
+comm_gard_CSR_reduced = CSR_comm_gard |>
+  dplyr::select(`%M`, D, SRL, RTD, `%N`)
+
+# stack
+cg_CSR_stack = stack(comm_gard_CSR_reduced)
+
+# add max column
+cg_CSR_stack$max = rep(CSR_comm_gard$max, 5)
+
+# reorder factors
+cg_CSR_stack$max = fct_relevel(cg_CSR_stack$max, "C", "S", "R", "CSR")
+cg_CSR_stack$ind = fct_relevel(cg_CSR_stack$ind, "%M", "D", "SRL", "RTD", "%N")
+
+# ANOVAs and post hoc tukeys
+perc_M_aov = aov(`%M` ~ max, data = CSR_comm_gard)
+summary(perc_M_aov)
+perc_M_tukey = TukeyHSD(perc_M_aov)
+perc_M_tukey
+
+perc_N_aov = aov(`%N` ~ max, data = CSR_comm_gard)
+summary(perc_N_aov)
+perc_N_tukey = TukeyHSD(perc_N_aov)
+perc_N_tukey
+
+
+D_aov = aov(D ~ max, data = CSR_comm_gard)
+summary(D_aov)
+D_tukey = TukeyHSD(D_aov)
+D_tukey
+
+
+SRL_aov = aov(SRL ~ max, data = CSR_comm_gard)
+summary(SRL_aov)
+SRL_tukey = TukeyHSD(SRL_aov)
+SRL_tukey
+
+RTD_aov = aov(RTD ~ max, data = CSR_comm_gard)
+summary(RTD_aov)
+RTD_tukey = TukeyHSD(RTD_aov)
+RTD_tukey
+
+# plot
+supp_fig4 = ggplot(data = cg_CSR_stack, 
+                   mapping = aes(x = max,
+                                 y = values)) +
+  geom_boxplot() +
+  theme_bw() +
+  facet_wrap(~ ind, ncol = 3,
+             scales = "free_y") +
+  labs(x = "CSR Strategy", y = "Fine Root Trait Value") +
+  theme(axis.title = element_text(size = 15))
+supp_fig4
+
+# save
+ggsave(filename = "objects/supp_fig4.jpg", plot = supp_fig4,
+       width = 7, height = 5, dpi = 600,
+       units = "in")
+
+##### Supplementary Figure 5: Individual Traits and CSR Boxplots #####
+
 
 # add groot species
 groot_indiv_traits = readr::read_csv("objects/groot_indiv_traits.csv")
@@ -790,9 +936,6 @@ groot_indiv_traits = groot_indiv_traits |>
   dplyr::filter(myc_type == "AM" | myc_type == "NM-AM")
 
 CSR_traits = merge(groot_indiv_traits, CSR, by = "species")
-
-# add common garden species
-CSR_comm_gard = merge(traits_bysp, CSR, by = "species")
 
 # rbind
 CSR_traits = rbind(CSR_traits[, c(1:7, 12:15)], CSR_comm_gard[, c(1, 6, 8:10, 12, 14, 19:22)]) |>
@@ -809,19 +952,26 @@ CSR_traits$`%N`[is.nan(CSR_traits$`%N`)]<-NA
 CSR_traits_reduced = CSR_traits |>
   dplyr::select(`%M`, D, SRL, RTD, `%N`)
   
+# filter out extreme values for better visualization
 CSR_traits_reduced$D = ifelse(CSR_traits_reduced$D > 2, NA, CSR_traits_reduced$D)
 CSR_traits_reduced$SRL = ifelse(CSR_traits_reduced$SRL > 500, NA, CSR_traits_reduced$SRL)
 CSR_traits_reduced$RTD =ifelse(CSR_traits_reduced$RTD > 1.5, NA, CSR_traits_reduced$RTD)
 CSR_traits_reduced$`%N` = ifelse(CSR_traits_reduced$`%N` > 4, NA, CSR_traits_reduced$`%N`)
 
+# stack
 CSR_stack = stack(CSR_traits_reduced)
+
+# add max column
 CSR_stack$max = rep(CSR_traits$max, 5)
 
+# reorder factors
 CSR_stack$max = fct_relevel(CSR_stack$max, "C", "S", "R", "CSR")
 CSR_stack$ind = fct_relevel(CSR_stack$ind, "%M", "D", "SRL", "RTD", "%N")
 CSR_stack$ind_f = factor(CSR_stack$ind, levels=c('%M','D','SRL','RTD', '%N'))
 
+# look at structure of dataframe
 str(CSR_stack)
+
 # ANOVAs and post hoc tukeys
 perc_M_aov = aov(`%M` ~ max, data = CSR_traits)
 summary(perc_M_aov)
@@ -850,8 +1000,8 @@ summary(RTD_aov)
 RTD_tukey = TukeyHSD(RTD_aov)
 RTD_tukey
 
-
-supp_fig4 = ggplot(data = CSR_stack, 
+# plot
+supp_fig5 = ggplot(data = CSR_stack, 
                    mapping = aes(x = max,
                                  y = values)) +
   geom_boxplot() +
@@ -860,8 +1010,9 @@ supp_fig4 = ggplot(data = CSR_stack,
              scales = "free_y") +
   labs(x = "CSR Strategy", y = "Fine Root Trait Value") +
   theme(axis.title = element_text(size = 15))
-supp_fig4
+supp_fig5
 
-ggsave(filename = "objects/supp_fig4.jpg", plot = supp_fig4,
+# save
+ggsave(filename = "objects/supp_fig5.jpg", plot = supp_fig5,
        width = 7, height = 5, dpi = 600,
        units = "in")
