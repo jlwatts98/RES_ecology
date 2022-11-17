@@ -71,7 +71,7 @@ fig1c
 d_m_lm = lm(D ~ `%M`, data = comm_gard)
 summary(d_m_lm)
 rtd_n_lm = lm(RTD ~ `%N`, data = comm_gard)
-summary(d_m_lm)
+summary(rtd_n_lm)
 
 fig1 = ggarrange(fig1a, fig1b, fig1c,
                  nrow = 1,
@@ -660,8 +660,10 @@ fig5b = ggplot(data = diverge_all, mapping = aes(
        x = "Divergence Time (MY)") +
   theme(axis.title = element_text(size = 15))
 fig5b
+library(patchwork)
 
-fig5 = fig5a + fig5b + plot_layout(nrow = 2, guides = 'collect')
+fig5 = fig5a + fig5b + plot_layout(nrow = 2, guides = 'collect') + 
+  plot_annotation(tag_levels = "A")
 
 fig5
 
@@ -816,6 +818,19 @@ ColourTernary(map)
 
 dev.off()
 
+### calculate moran's I #####
+xy = t(xy)
+xy = as.data.frame(xy)
+xy$PC1 = response
+
+dists = as.matrix(dist(cbind(xy$x, xy$y)))
+
+dists.inv <- 1/dists
+diag(dists.inv) <- 0
+
+morans_I = Moran.I(xy$PC1, dists.inv)
+morans_I
+
 ### Figure 7b: Conservation Gradient in CSR space
 
 response <- CSR_RES$PC2
@@ -852,6 +867,19 @@ map <- rbind(x = tri['x', ], y = tri['y', ], z = predicted,
 ColourTernary(map, spectrum = spectrum)
 
 dev.off()
+
+### calculate moran's I #####
+xy = t(xy)
+xy = as.data.frame(xy)
+xy$PC1 = response
+
+dists = as.matrix(dist(cbind(xy$x, xy$y)))
+
+dists.inv <- 1/dists
+diag(dists.inv) <- 0
+
+morans_I = Moran.I(xy$PC1, dists.inv)
+morans_I
 
 ##### Supplementary Figure 4: Common Garden Individual Traits and CSR Boxplots#####
 
