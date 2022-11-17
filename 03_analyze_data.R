@@ -667,6 +667,10 @@ fig5 = fig5a + fig5b + plot_layout(nrow = 2, guides = 'collect') +
 
 fig5
 
+# linear model
+diverge_lm = lm(`%M` ~ rn.bl, data = diverge_all)
+summary(diverge_lm)
+
 # save
 ggsave("objects/fig5.jpg", plot = fig5,
        dpi = 600, width = 5, 
@@ -818,7 +822,7 @@ ColourTernary(map)
 
 dev.off()
 
-### calculate moran's I #####
+### calculate moran's I #
 xy = t(xy)
 xy = as.data.frame(xy)
 xy$PC1 = response
@@ -868,7 +872,7 @@ ColourTernary(map, spectrum = spectrum)
 
 dev.off()
 
-### calculate moran's I #####
+### calculate moran's I ##
 xy = t(xy)
 xy = as.data.frame(xy)
 xy$PC1 = response
@@ -1000,6 +1004,25 @@ CSR_stack$ind_f = factor(CSR_stack$ind, levels=c('%M','D','SRL','RTD', '%N'))
 # look at structure of dataframe
 str(CSR_stack)
 
+# plot
+supp_fig5 = ggplot(data = CSR_stack, 
+                   mapping = aes(x = max,
+                                 y = values)) +
+  geom_boxplot() +
+  theme_bw() +
+  facet_wrap(~ ind_f, ncol = 3,
+             scales = "free_y") +
+  labs(x = "CSR Strategy", y = "Fine Root Trait Value") +
+  theme(axis.title = element_text(size = 15))
+supp_fig5
+
+# save
+ggsave(filename = "objects/supp_fig5.jpg", plot = supp_fig5,
+       width = 7, height = 5, dpi = 600,
+       units = "in")
+
+##### Supplementary Table 5: Post Hoc Tukey Results for Individual Traits #####
+
 # ANOVAs and post hoc tukeys
 perc_M_aov = aov(`%M` ~ max, data = CSR_traits)
 summary(perc_M_aov)
@@ -1028,19 +1051,37 @@ summary(RTD_aov)
 RTD_tukey = TukeyHSD(RTD_aov)
 RTD_tukey
 
-# plot
-supp_fig5 = ggplot(data = CSR_stack, 
-                   mapping = aes(x = max,
-                                 y = values)) +
-  geom_boxplot() +
-  theme_bw() +
-  facet_wrap(~ ind_f, ncol = 3,
-             scales = "free_y") +
-  labs(x = "CSR Strategy", y = "Fine Root Trait Value") +
-  theme(axis.title = element_text(size = 15))
-supp_fig5
+# extract into a table
+perc_M = perc_M_tukey$max
+perc_M = perc_M[c(3, 2, 6, 1, 5, 4),]
+D = D_tukey$max
+D = D[c(3, 2, 6, 1, 5, 4),]
+SRL = SRL_tukey$max
+SRL = SRL[c(3, 2, 6, 1, 5, 4),]
+RTD = RTD_tukey$max
+RTD = RTD[c(3, 2, 6, 1, 5, 4),]
+perc_N = perc_N_tukey$max
+perc_N = perc_N[c(3, 2, 6, 1, 5, 4),]
+
+supp_table4 = as.data.frame(rbind(perc_M, D, SRL, RTD, perc_N)) |>
+  tibble::rownames_to_column("Comparison") |>
+  dplyr::rename(
+    Difference = diff,
+    Lower = lwr,
+    Upper = upr,
+    `p-value` = `p adj`
+  ) |>
+  mutate_if(is.numeric, round, digits=3)
+supp_table4$Trait = c(rep("%M", 6), rep("D", 6),
+                          rep("SRL", 6), rep("RTD", 6),
+                          rep("%N", 6))
+supp_table4$Comparison = gsub("\\.", "-", supp_table4$Comparison)
+
+supp_table4$Comparison = word(supp_table4$Comparison, start = 1L, end = 2L, sep = fixed("-"))
+
+supp_table4 = supp_table4[,c(6, 1:5)]
 
 # save
-ggsave(filename = "objects/supp_fig5.jpg", plot = supp_fig5,
-       width = 7, height = 5, dpi = 600,
-       units = "in")
+write.table(supp_table4, 
+            file = "objects/supp_table4.txt", 
+            sep = ",", quote = FALSE, row.names = F)
