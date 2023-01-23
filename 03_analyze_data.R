@@ -519,6 +519,20 @@ barplot.phylo4d(p4d, bar.col=(RES.lipa$p.value < 0.05) + 1, center = T , scale =
 
 dev.off()
 
+# lipa correlation
+p.values = as.data.frame(PC.lipa$p.value) |>
+  dplyr::rename(PC1.p.value = PC1,
+                PC2.p.value = PC2)
+
+plot(p.values$PC1.p.value, p.values$PC2.p.value)
+
+lipa = merge(all_complete_traits, p.values, by = 0)
+
+plot(lipa$PC1, lipa$PC1.p.value)
+plot(lipa$PC2, lipa$PC2.p.value)
+
+write_csv(lipa, "objects/lipa.csv")
+
 ##### Supplementary Table 2: Phylogenetic Signal #####
 
 # measure phylogenetic signal of individual traits
